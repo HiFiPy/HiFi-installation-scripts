@@ -1,3 +1,11 @@
+# Ignore pretty much any file that would be downloaded by this script
+*.f*
+*.F*
+*.c*
+*.C*
+*.gz
+*.tar.gz
+
 # Compiled Object files
 *.slo
 *.lo
