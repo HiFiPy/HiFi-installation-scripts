@@ -11,8 +11,8 @@
 # The screen output will be appended to: install.log
 #
 # This script has only been tested on a limited number of platforms,
-# and thus some part of it may fail.  Some troubleshooting options
-# include:
+# and thus some part of it may fail.  Some troubleshooting
+# considerations include:
 #
 #  - If the wget commands don't work, you may need to update the link
 #    to the gzipped tar file containing the library.  The websites
@@ -36,6 +36,13 @@
 #
 #  - The configuration options may change for newer versions of
 #    different libraries.
+#
+#  - The LAPACK compilation has been failing on Ubuntu 16.04.  An
+#    untested workaround is to use apt-get to install LAPACK and
+#    manually include the LAPACK links in the post makefile.
+#
+#  - cmake may need to be updated to a version more recent than 2.5 for
+#    the PETSc installation.
 #
 #  - This script is not intended for supercomputers.
 #
