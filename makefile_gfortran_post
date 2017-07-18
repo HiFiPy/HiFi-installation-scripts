@@ -1,0 +1,92 @@
+########################################################################
+# This is a makefile to compile post, which is the postprocessing
+# program for HiFi.
+#
+# On your computer, run the following command in this directory:
+# 
+#    cp makefile_gfortran makefile
+#
+# Edit the makefile if needed.  In particular, update the directories
+# containing the libraries if needed (and note that errors may arise
+# if you use a relative path rather than the full path).  To compile
+# or re-compile, run:
+#
+# Then compile the physics module by running
+#
+#     make 
+#
+########################################################################
+
+# Find the path to the directory containing the libraries which is
+# assumed to be in the lib subdirectory in the main HiFi directory
+
+LIB_DIR = $(D)../lib
+
+# Specify library locations
+
+HDF5_DIR = $(LIB_DIR)/hdf5-1.10.1
+LAPACK_DIR = $(LIB_DIR)/lapack-3.7.0
+
+# Set Fortran compiler flags
+
+FFLAGS = \
+	-O2 -w \
+	-I$(HDF5_DIR)/include \
+	-L$(HDF5_DIR)/lib \
+	-Wl,-rpath,$(HDF5_DIR)/lib \
+	-lhdf5 \
+	-lhdf5_fortran \
+	-I$(LAPACK_DIR)/include \
+	-L$(LAPACK_DIR)/lib \
+	-llapack 
+
+# Specify serial Fortran compilers
+
+FC = gfortran $(FFLAGS)
+F90 = gfortran $(FFLAGS)
+
+.f.o:
+	$(F90) -c $*.f
+
+OBJS = 	\
+	io.o \
+	local.o \
+	jacobi.o \
+	plotter.o \
+	transport.o \
+	postxmhd.o \
+	post4field.o \
+	post2fluid.o \
+	postpn.o \
+	postbreakout.o \
+	postmast.o \
+	posteuler.o \
+	helix.o \
+	beltrami.o \
+	slice.o \
+	post.o
+
+post: $(OBJS) 
+	$(F90) -o post $(OBJS) $(LIBS)
+	rm -f *.cpp
+
+#dependencies:
+local.o: io.o
+jacobi.o: local.o
+slice.o: jacobi.o
+transport.o: local.o
+plotter.o: slice.o
+post4field.o: plotter.o
+postxmhd.o: plotter.o transport.o
+post2fluid.o: postxmhd.o
+postpn.o: postxmhd.o
+postbreakout.o: postxmhd.o
+postmast.o: postxmhd.o
+posteuler.o: plotter.o
+helix.o: plotter.o
+beltrami.o: slice.o
+post.o: post4field.o post2fluid.o helix.o beltrami.o posteuler.o \
+	postpn.o postbreakout.o postmast.o
+
+clean:
+	rm -f *.o *.mod *.out *.bin *.fld *~ temp* post
