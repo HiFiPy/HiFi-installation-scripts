@@ -35,3 +35,12 @@
 *.exe
 *.out
 *.app
+
+# For the moment, ignore Fortran and C files
+*.f
+*.F
+*.f90
+*.F90
+*.c
+*.cpp
+*.h
