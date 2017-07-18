@@ -1,0 +1,118 @@
+########################################################################
+# This is a makefile to compile a HiFi physics module using a library
+# built in the solver_3.5 directory.
+#
+# The physics module must be compiled after the MPICH, HDF5, PETSc,
+# and solver_3.5 libraries are compiled.
+#
+# Before compiling HiFi, export PHYSICS environment variable 
+# to be the name of the [physics_templ].f application file you 
+# would like to compile with the following command:
+#
+#     export PHYSICS=physics_templ
+#
+# where "physics_templ" should be replaced with the name of
+# your physics application file.  In csh/tcsh, this can be done using
+# 
+#     setenv PHYSICS physics_templ
+#
+# On your computer, run the following command in this directory:
+# 
+#    cp makefile_gfortran makefile
+#
+# Edit the makefile if needed.  In particular, update the directories
+# containing the libraries if needed (and note that errors may arise
+# if you use a relative path rather than the full path).  To compile
+# or re-compile, run:
+#
+# Then compile the physics module by running
+#
+#     make
+#
+#########################################################################
+
+# Specify library locations and PETSC architecture flag
+
+BASE_DIR = $(D)../
+LIB_DIR = $(BASE_DIR)/lib
+
+MPICH_DIR  = $(LIB_DIR)/mpich-3.2-install
+HDF5_DIR   = $(LIB_DIR)/hdf5-1.10.1
+PETSC_DIR  = $(LIB_DIR)/petsc-3.5.4
+PETSC_ARCH = linux-gnu
+
+# Specify the solver directory
+
+SOLVER_DIR = $(BASE_DIR)/solver_3.5
+
+# Specify Fortran compilers
+
+FC = $(MPICH_DIR)/bin/mpifort $(FFLAGS)
+F90 = $(MPICH_DIR)/bin/mpifort $(FFLAGS)
+
+# Set Fortran compiler flags with links to the PETSc, HDF5, and MPICH
+# directories.  The flags here may need to be changed if the libraries
+# were not compiled with GCC compilers.  For debugging, you may
+# replace "-O2" with the flags: "-O0 -g -fbacktrace -fbounds-check
+# -ffpe-trap=zero,overflow,underflow".  However, this will slow the
+# code down substantially and should not be used for production runs.
+# This set of flags provides extensive and detailed warning messages.
+
+FFLAGS = \
+	-O2 -Wall \
+	-Wextra -Wconversion -Wunderflow -Wunused-parameter -pedantic \
+	-frounding-math -fsignaling-nans \
+	-L$(SOLVER_DIR) \
+	-I$(SOLVER_DIR) \
+	-lsel \
+	-L$(HDF5_DIR)/lib \
+	-I$(HDF5_DIR)/include \
+	-lhdf5 \
+	-lhdf5_fortran \
+	-Wl,-rpath,$(HDF5_DIR)/lib \
+	-L$(PETSC_DIR)/$(PETSC_ARCH)/lib \
+	-I$(PETSC_DIR)/$(PETSC_ARCH)/include \
+	-L$(PETSC_FORTRAN_LIB) \
+	-L$(PETSC_LIB)
+
+# Specify libraries
+
+LIBS = \
+	-L$(SOLVER_DIR) -lsel \
+	$(PETSC_FORTRAN_LIB) \
+	$(PETSC_LIB) \
+	-lhdf5 \
+	-lhdf5_fortran \
+	-Wl,-rpath,$(HDF5_DIR)/lib \
+	-I$(SOLVER_DIR) \
+	-L$(HDF5_DIR)/lib \
+	-I$(HDF5_DIR)/include
+
+# objects
+
+OBJECTS = \
+	$(PHYSICS).o
+
+# targets
+
+all: libsel $(PHYSICS)
+
+libsel:
+	cd $(SOLVER_DIR); make
+
+$(PHYSICS): $(OBJECTS) chkopts
+	$(FLINKER) -o $(PHYSICS) $(OBJECTS) $(LIBS)
+	rm -f *.cpp *.i
+
+# PETSc includes.  These paths may change for PETSc v3.6 and 3.7.
+
+include $(PETSC_DIR)/conf/variables
+include $(PETSC_DIR)/conf/rules
+
+# dependencies
+
+$(OBJECTS): $(SOLVER_DIR)/libsel.a
+
+realclean: clean
+	rm -f *.o *.mod *.out *.bin *.dat *.fld *.diff *.err *~ temp* \
+	sel.o* $(PHYSICS)
