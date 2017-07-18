@@ -1,0 +1,152 @@
+########################################################################
+# This is a makefile to create libsel.a in the solver_3.5 directory.
+#
+# This directory must be compiled after the MPICH, HDF5, and PETSc
+# libraries are compiled, and before any physics modules in the
+# code_3.1 directory are compiled.
+#
+# This makefile assumes that this and all of the external libraries
+# were compiled using the GCC family of compilers (gfortran, gcc, g++)
+# by the install_hifi_libraries.sh script one directory up.  You may
+# need to change the library locations and FFLAGS if you are using a
+# different family of compilers such as those by Intel (e.g., ifort,
+# icc, icpc).  You are likely to run into errors if you mix compiler
+# families.
+#
+# On your computer, run the following command in this directory:
+# 
+#    cp makefile_gfortran makefile
+#
+# Edit the makefile if needed.  In particular, update the directories
+# containing the libraries if needed (and note that errors may arise
+# if you use a relative path rather than the full path).  To compile
+# or re-compile, run:
+#
+#    make
+#
+# If at some point you need to remove compiled objects and libraries),
+# you may run
+#
+#    make clean
+#
+########################################################################
+
+# Find the path to the directory containing the libraries which is
+# assumed to be in the lib subdirectory in the main HiFi directory
+
+LIB_DIR = $(D)../lib
+
+# Specify library locations
+
+MPICH_DIR = $(LIB_DIR)/mpich-3.2-install
+HDF5_DIR  = $(LIB_DIR)/hdf5-1.10.1
+PETSC_DIR = $(LIB_DIR)/petsc-3.5.4
+PETSC_ARCH = linux-gnu
+
+# Specify Fortran compilers.  
+
+FC = $(MPICH_DIR)/bin/mpifort $(FFLAGS)
+F90 = $(MPICH_DIR)/bin/mpifort $(FFLAGS)
+
+# Set Fortran compiler flags with links to the PETSc, HDF5, and MPICH
+# directories.  The flags here may need to be changed if the libraries
+# were not compiled with GCC compilers.  For debugging, you may
+# replace "-O3 -w" with the flags: "-Og -Wall -g -fbacktrace
+# -fbounds-check -ffpe-trap=zero,overflow,underflow".  However, this
+# will slow the code down substantially and should not be used for
+# production runs.
+
+FFLAGS = -O2 -w \
+	-fimplicit-none -frounding-math -fsignaling-nans \
+	-L$(HDF5_DIR)/lib \
+	-I$(HDF5_DIR)/include \
+	-lhdf5 \
+	-lhdf5_fortran \
+	-Wl,-rpath,$(HDF5_DIR)/lib \
+	-I$(MPICH_DIR)/include \
+	-L$(MPICH_DIR)/lib \
+	-I$(PETSC_DIR)/$(PETSC_ARCH)/include \
+	-L$(PETSC_DIR)/$(PETSC_ARCH)/lib
+
+# Set whether or not to compile with Cubit capability using NetCDF.
+# Setting of CUBIT = true triggers compilation with Cubit capability.
+# In most cases, it is not necessary to compile with Cubit.
+
+CUBIT = false
+
+ifeq ($(CUBIT),true)
+    job_objects = cubit.o job2_wcubit.o
+else
+    job_objects = job2.o
+endif
+
+OBJECTS = \
+	io.o \
+	local.o \
+	debug.o \
+	spline.o \
+	bicube.o \
+	jacobi.o \
+	beltrami.o \
+	extra.o \
+	transport.o \
+	$(job_objects) \
+	p2_sel.o \
+	p2_ct.o \
+	p2_condense.o \
+	p2_schur.o \
+	p2_interior.o \
+	p2_edge.o \
+	p2_rj.o \
+	fd.o \
+	p2_diagnose.o \
+	p2_snes.o \
+	p2_grid.o \
+	p2_advance.o \
+	driver.o
+
+libsel: $(OBJECTS) chkopts
+	ar -r libsel.a $(OBJECTS)
+	rm -f *.cpp *.i 
+
+# PETSc includes.  These paths may change for PETSc v3.6 and 3.7.
+
+include $(PETSC_DIR)/conf/variables
+include $(PETSC_DIR)/conf/rules
+
+# dependencies
+
+local.o: io.o
+debug.o: local.o
+spline.o: local.o
+bicube.o: spline.o
+jacobi.o: local.o
+cubit.o: local.o
+beltrami.o: jacobi.o bicube.o
+extra.o: bicube.o
+transport.o: local.o
+job2_wcubit.o: cubit.o beltrami.o
+job2.o: beltrami.o
+
+ifeq ($(CUBIT),true)
+    p2_sel.o: job2_wcubit.o debug.o
+else 
+    p2_sel.o: job2.o debug.o
+endif 
+
+p2_diagnose.o: p2_sel.o
+p2_ct.o: p2_diagnose.o
+fd.o: p2_sel.o
+p2_condense.o: p2_sel.o
+p2_schur.o: p2_ct.o p2_condense.o
+p2_interior.o: p2_ct.o
+p2_edge.o: p2_ct.o
+p2_rj.o: p2_interior.o p2_edge.o p2_schur.o
+p2_snes.o: p2_rj.o
+p2_grid.o: p2_snes.o
+p2_advance.o: fd.o p2_grid.o
+driver.o: p2_advance.o
+
+realclean: clean
+	rm -f *.o *.mod *.diff *~ libsel.a
+
