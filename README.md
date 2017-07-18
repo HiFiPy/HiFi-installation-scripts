@@ -11,7 +11,9 @@ together.  This compiles the MPICH, HDF5, and PETSc libraries.
 
 In a terminal, run the following command:
 
-  bash install_hifi_libraries.sh
+```ShellSession
+bash install.sh
+```
 
 ## Disclaimer
 
